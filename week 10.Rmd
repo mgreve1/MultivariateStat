@@ -1,0 +1,92 @@
+---
+title: 'Week 10: Non-hierarchical clustering'
+author: "Maike Greve"
+date: "27 Juni 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(MASS)
+library(tidyverse)
+library(stats)
+library(pdist)
+```
+
+# Exercise 2
+
+Data setup
+```{r cars}
+fgl<-as.tibble(MASS::fgl)
+summary(fgl$type)
+glass<-fgl %>% select(-type)
+head(glass)
+```
+
+###a) PCA
+
+```{r}
+pc<-princomp(glass)
+pc12<-as.matrix(pc$scores[,c(1,2)])
+dim(pc12)
+```
+
+
+###b) k-means
+```{r}
+set.seed (1337)
+random_number<- as.factor(sample(1:6,nrow(glass), replace = TRUE ))
+pc12_class<-as.data.frame(cbind(pc12, random_number))
+pc12_class$random_number<-as.factor(pc12_class$random_number)
+
+ggplot(pc12_class, aes(Comp.1,Comp.2, color=random_number ))+geom_point() 
+
+##begin loop
+i<-0
+#only 2 times
+while(i<2){
+  i<-i+1
+#compute centroids
+  centroid<-pc12_class %>%  group_by_at(2+i) %>% mutate(centroids_1=mean(Comp.1), centroids_2=mean(Comp.2))
+  centroid<-as.matrix(unique(centroid[,c(4,5)]))
+  centroid
+  dim(centroid)
+  #distance matrix
+  dist<-pdist(pc12, centroid)
+  dist<-as.matrix(dist)
+  dist
+  pc12_class<-cbind(pc12_class, new=c(NA))
+  colnames(pc12_class)[3+i]<-paste("cluster", i, sep="_")
+
+for(n in 1:nrow(dist)){
+  min<- which(dist[n,]==min(dist[n,]))
+  pc12_class[n, 3+i] <- min
+}
+  
+}
+
+
+pc12_class$cluster_1<-as.factor(pc12_class$cluster_1)
+
+ggplot(pc12_class, aes(Comp.1,Comp.2, color=cluster_1 ))+geom_point() 
+
+
+pc12_class$cluster_2<-as.factor(pc12_class$cluster_2)
+
+ggplot(pc12_class, aes(Comp.1,Comp.2, color=cluster_2 ))+geom_point() 
+
+
+```
+###c) K-means algorithm
+
+```{r}
+kmeans<-kmeans(pc12, 6, iter.max=2)
+
+pc12_class$kmeans<-as.factor(kmeans$cluster)
+ggplot(pc12_class, aes(Comp.1,Comp.2, color=kmeans ))+geom_point() 
+
+```
+
+
+
